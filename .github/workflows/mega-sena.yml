@@ -1,13 +1,16 @@
 name: Notificar resultado Mega-Sena
 
 on:
-  schedule:
-    # Mega-Sena costuma sortear às 20h BRT (23h UTC), terças, quintas e sábados.
-    # Roda algumas vezes no fim da tarde/noite pra pegar o resultado assim que sair.
-    - cron: '0 23 * * 2,4,6'
-    - cron: '30 23 * * 2,4,6'
-    - cron: '0 0 * * 3,5,0'
-  workflow_dispatch:  # permite rodar manualmente
+ schedule:
+    # Terça e quinta: sorteio às 21h BRT (0h UTC do dia seguinte), com folga
+    - cron: '0 23 * * 2,4'
+    - cron: '30 23 * * 2,4'
+    - cron: '0 0 * * 3,5'
+    # Domingo: sorteio agora é às 11h BRT (14h UTC), não mais sábado à noite
+    - cron: '0 14 * * 0'
+    - cron: '30 14 * * 0'
+    - cron: '0 15 * * 0'
+  workflow_dispatch:
 
 permissions:
   contents: write
