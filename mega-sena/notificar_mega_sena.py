@@ -1,19 +1,15 @@
 """
 Notificador de resultado da Mega-Sena via Telegram.
-
 Fluxo:
 1. Busca o concurso mais recente na API da Caixa.
 2. Compara com o último concurso já notificado (salvo em ultimo_concurso.json).
 3. Se for um concurso novo, envia mensagem pro Telegram e atualiza o arquivo.
-
 Pensado para rodar como um passo a mais no workflow do GitHub Actions do LotoCiclo3.
 """
-
 import json
 import os
 import sys
 from pathlib import Path
-
 import requests
 
 # --- Configuração ---
@@ -29,7 +25,8 @@ ARQUIVO_ULTIMO_CONCURSO = Path("ultimo_concurso.json")
 
 def buscar_resultado_mais_recente() -> dict:
     """Busca o resultado do concurso mais recente na API da Caixa."""
-    resp = requests.get(CAIXA_API_URL, timeout=15)
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    resp = requests.get(CAIXA_API_URL, timeout=15, headers=headers)
     resp.raise_for_status()
     return resp.json()
 
@@ -66,7 +63,11 @@ def montar_mensagem(resultado: dict) -> str:
     if acumulou:
         linhas.append("Acumulou! 💰")
         if valor_estimado_proximo:
-            linhas.append(f"Próximo prêmio estimado: R$ {valor_estimado_proximo:,.2f}")
+            try:
+                valor_float = float(valor_estimado_proximo)
+                linhas.append(f"Próximo prêmio estimado: R$ {valor_float:,.2f}")
+            except (TypeError, ValueError):
+                linhas.append(f"Próximo prêmio estimado: R$ {valor_estimado_proximo}")
     else:
         premiacoes = resultado.get("listaRateioPremio", [])
         sena = next((p for p in premiacoes if p.get("descricaoFaixa") == "1º Faixa"), None)
@@ -79,7 +80,6 @@ def montar_mensagem(resultado: dict) -> str:
 def enviar_telegram(mensagem: str) -> None:
     if not BOT_TOKEN or not CHAT_ID:
         raise RuntimeError("TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID não configurados.")
-
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     resp = requests.post(
         url,
@@ -94,7 +94,6 @@ def main() -> None:
     numero_atual = resultado.get("numero")
 
     ultimo_numero = carregar_ultimo_concurso_salvo()
-
     if ultimo_numero == numero_atual:
         print(f"Nenhum concurso novo (último notificado: {ultimo_numero}).")
         return
